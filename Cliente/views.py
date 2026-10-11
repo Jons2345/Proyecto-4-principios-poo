@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from Cliente.models import Cliente, Producto, Venta
+from models import Cliente, Producto, Venta
 from shared.json_manager import GestorJSON
 
 

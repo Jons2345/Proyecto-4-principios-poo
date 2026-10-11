@@ -1,5 +1,5 @@
 from models_academico import Estudiante, Docente, Materia, Matricula
-from Academico.views_academico import CrudBase
+from views import CrudBase
 
 
 class EstudianteController(CrudBase):
@@ -64,6 +64,35 @@ class MateriaController(CrudBase):
 
 
 class MatriculaController(CrudBase):
+    """El equivalente académico del VentaController."""
+
+    MODELO = Matricula
+    ARCHIVO = "data/matriculas.json"
+    NOMBRE = "matrícula"
+    CAMPOS_BUSCABLES = ("periodo",)
+
+    def __init__(self, estudiantes=None, materias=None):
+        super().__init__()
+        self.estudiantes = estudiantes or EstudianteController()
+        self.materias = materias or MateriaController()
+
+    def validar(self, datos, id_actual=None):
+        # TODO 1: el estudiante debe existir
+        # TODO 2: la materia debe existir
+        # TODO 3: no se puede matricular dos veces al mismo estudiante
+        #         en la misma materia y el mismo periodo
+        return None
+
+    def agregar_nota(self, matricula_id, tipo, valor, peso=1):
+        # TODO: obtener la matrícula, llamar a matricula.agregar_nota(...),
+        # atrapar ValueError y volver a guardar el registro completo.
+        pass
+
+    def boletin(self, estudiante_id):
+        # TODO: devolver el texto con todas las materias del estudiante,
+        # su promedio por materia y el promedio general.
+        # Guíate con VentaController.factura().
+        pass
     """El equivalente académico del VentaController."""
 
     MODELO = Matricula

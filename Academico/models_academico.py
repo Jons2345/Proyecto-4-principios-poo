@@ -1,7 +1,7 @@
 """Modelos del negocio académico. Persona, ModeloBase y las reglas ya existen:
 se reutilizan tal cual desde models.py."""
 
-from Academico.models_academico import ModeloBase, Persona
+from models import ModeloBase, Persona
 
 
 # =====================================================================
@@ -216,6 +216,91 @@ class Nota:
 
 
 class Matricula(ModeloBase):
+    """Une a un Estudiante con una Materia y guarda sus notas.
+    Es el equivalente académico de la Venta con sus detalles."""
+
+    CAMPOS = ("estudiante_id", "materia_id", "periodo")
+    OBLIGATORIOS = ("estudiante_id", "materia_id")
+    NOTA_APROBACION = 14
+
+    def __init__(self, id_registro, estudiante_id, materia_id, periodo="", notas=None):
+        super().__init__(id_registro)
+        self.estudiante_id = estudiante_id
+        self.materia_id = materia_id
+        self.periodo = periodo
+        self.__notas = list(notas) if notas else []
+
+    @property
+    def estudiante_id(self):
+        return self.__estudiante_id
+
+    @estudiante_id.setter
+    def estudiante_id(self, valor):
+        self.__estudiante_id = int(valor)
+
+    @property
+    def materia_id(self):
+        return self.__materia_id
+
+    @materia_id.setter
+    def materia_id(self, valor):
+        self.__materia_id = int(valor)
+
+    @property
+    def periodo(self):
+        return self.__periodo
+
+    @periodo.setter
+    def periodo(self, valor):
+        self.__periodo = Matricula.limpiar(valor) or "2026-1"
+
+    @property
+    def notas(self):
+        return tuple(self.__notas)          # copia de solo lectura
+
+    @property
+    def promedio(self):
+        if not self.__notas:
+            return 0
+        puntos = sum(nota.valor * nota.peso for nota in self.__notas)
+        pesos = sum(nota.peso for nota in self.__notas)
+        return round(puntos / pesos, 2)
+
+    @property
+    def estado(self):
+        if not self.__notas:
+            return "Sin notas"
+        return "Aprobado" if self.promedio >= Matricula.NOTA_APROBACION else "Reprobado"
+
+    def agregar_nota(self, tipo, valor, peso=1):
+        nota = Nota(tipo, valor, peso)      # la Matrícula crea sus propias notas
+        self.__notas.append(nota)
+        return nota
+
+    def notas_por_tipo(self, tipo):
+        tipo = str(tipo).lower()
+        return [nota for nota in self.__notas if nota.tipo == tipo]
+
+    def a_diccionario(self):
+        return {
+            "id": self.id,
+            "estudiante_id": self.__estudiante_id,
+            "materia_id": self.__materia_id,
+            "periodo": self.__periodo,
+            "promedio": self.promedio,
+            "estado": self.estado,
+            "notas": [nota.a_diccionario() for nota in self.__notas],
+        }
+
+    @classmethod
+    def desde_diccionario(cls, datos):
+        notas = [Nota.desde_diccionario(n) for n in datos.get("notas", [])]
+        return cls(datos["id"], datos["estudiante_id"], datos["materia_id"],
+                   datos.get("periodo", ""), notas)
+
+    def etiqueta(self):
+        return (f"Estudiante {self.__estudiante_id} · materia {self.__materia_id} · "
+                f"{self.__periodo} · promedio {self.promedio} ({self.estado})")
     """Une a un Estudiante con una Materia y guarda sus notas.
     Es el equivalente académico de la Venta con sus detalles."""
 
