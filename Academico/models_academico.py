@@ -1,7 +1,7 @@
 """Modelos del negocio académico. Persona, ModeloBase y las reglas ya existen:
 se reutilizan tal cual desde models.py."""
 
-from models import ModeloBase, Persona
+from models_academico import ModeloBase, Persona
 
 
 # =====================================================================

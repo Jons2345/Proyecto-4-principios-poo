@@ -1,5 +1,5 @@
 from models_academico import Estudiante, Docente, Materia, Matricula
-from views import CrudBase
+from views_academico import CrudBase
 
 
 class EstudianteController(CrudBase):

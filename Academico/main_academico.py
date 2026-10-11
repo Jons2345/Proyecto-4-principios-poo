@@ -1,7 +1,7 @@
 from shared.herramientas import (
     imprimir_titulo, imprimir_exito, imprimir_error, imprimir_info, confirmar
 )
-from views import ClienteController, ProductoController, VentaController
+from views_academico import EstudianteController, DocenteController, MateriaController, MatriculaController
 
 
 # =====================================================================
