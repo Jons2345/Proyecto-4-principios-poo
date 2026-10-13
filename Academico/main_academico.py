@@ -1,6 +1,3 @@
-# main.py es la VISTA: lo único que habla con el usuario (input/print).
-# No valida ni guarda nada: le pide todo a los controladores de views.py
-# y solo muestra lo que ellos responden.
 from shared.herramientas import (
     imprimir_titulo, imprimir_exito, imprimir_error, imprimir_info, confirmar
 )
@@ -10,47 +7,49 @@ from views_academico import EstudianteController, DocenteController, MateriaCont
 class Menu:
 
     def __init__(self):
-        # Se crea UN solo controlador de cada tipo.
-        # A ventas se le pasan los MISMOS clientes y productos.
         self.estudiantes = EstudianteController()
         self.docentes = DocenteController()
         self.materias = MateriaController()
         self.matriculas = MatriculaController(self.estudiantes, self.materias)
 
-    # ---------- ayudas ----------
+
     def pausa(self):
         input("\nPresione Enter para continuar...")
 
     def pedir_entero(self, texto):
-        # Devuelve el número, o None si el usuario no escribió un número
         try:
             return int(input(texto))
         except ValueError:
             return None
 
     def mostrar_resultado(self, exito, mensaje):
-        # Los controladores devuelven (exito, mensaje)
         if exito:
             imprimir_exito(mensaje)
         else:
             imprimir_error(mensaje)
 
-    # ---------- menú principal ----------
+
     def ejecutar(self):
         while True:
-            imprimir_titulo("SISTEMA DE VENTAS")
+            imprimir_titulo("SISTEMA ACADEMICO")
             print("  1. Estudiantes")
             print("  2. Docentes")
             print("  3. Materias")
+            print("  4. Matricula")
+            print("  5. Reporte general")
             print("  0. Salir\n")
             opcion = input("Opción: ").strip()
 
             if opcion == "1":
-                self.menu_crud(self.clientes)
+                self.menu_crud(self.estudiantes)
             elif opcion == "2":
-                self.menu_crud(self.productos)
+                self.menu_crud(self.docentes)
             elif opcion == "3":
-                self.menu_crud(self.ventas)
+                self.menu_crud(self.materias)
+            elif opcion == "4":
+                self.menu_crud(self.matriculas)
+            elif opcion == "5":
+                self.reporte_general()
             elif opcion == "0":
                 imprimir_info("¡Hasta luego! 👋")
                 break
@@ -58,11 +57,9 @@ class Menu:
                 imprimir_error("Opción no válida")
                 self.pausa()
 
-    # ---------- menú de cada controlador ----------
-    # El mismo menú sirve para clientes, productos y ventas,
-    # porque los tres controladores tienen los mismos métodos.
+
     def menu_crud(self, controlador):
-        titulo = controlador.nombre.upper() + "S"     # CLIENTES, PRODUCTOS, VENTAS
+        titulo = controlador.nombre.upper() + "S"     
 
         while True:
             imprimir_titulo(titulo)
@@ -72,13 +69,14 @@ class Menu:
             print("  4. Ver por id")
             print("  5. Actualizar")
             print("  6. Eliminar")
-            if controlador == self.ventas:
-                print("  7. Ver factura")
+            if controlador == self.matriculas:
+                print("  7. Agregar nota")
+                print(" 8. Ver voletin")
             print("  0. Volver\n")
             opcion = input("Opción: ").strip()
 
             if opcion == "1":
-                if controlador == self.ventas:
+                if controlador == self.matriculas:
                     self.crear_venta()
                 else:
                     self.crear(controlador)
@@ -92,18 +90,18 @@ class Menu:
                 self.actualizar(controlador)
             elif opcion == "6":
                 self.eliminar(controlador)
-            elif opcion == "7" and controlador == self.ventas:
-                self.ver_factura()
+            elif opcion == "7" and controlador == self.matriculas:
+                self.agregar_nota()
+            elif opcion == "8" and controlador == self.matriculas:
+                self.ver_boletin()
             elif opcion == "0":
                 break
             else:
                 imprimir_error("Opción no válida")
                 self.pausa()
 
-    # ---------- operaciones ----------
     def crear(self, controlador):
         imprimir_titulo(f"CREAR {controlador.nombre.upper()}")
-        # Se pregunta un dato por cada campo del modelo
         datos = {}
         for campo in controlador.campos:
             datos[campo] = input(f"{campo.capitalize()}: ")
@@ -140,6 +138,10 @@ class Menu:
         objeto = controlador.obtener(id_registro)
         if objeto is None:
             imprimir_error("No encontrado")
+        elif controlador == self.matriculas:
+            print(f"  {objeto}")
+            for nota in objeto.notas:
+                print(f"     · {nota} (peso {nota.peso:g})")
         else:
             for clave, valor in objeto.a_diccionario().items():
                 print(f"  {clave.capitalize()}: {valor}")
@@ -147,11 +149,6 @@ class Menu:
 
     def actualizar(self, controlador):
         imprimir_titulo(f"ACTUALIZAR {controlador.nombre.upper()}")
-        if controlador == self.ventas:
-            imprimir_error("Las ventas registradas no se pueden modificar")
-            self.pausa()
-            return
-
         id_registro = self.pedir_entero("Id: ")
         objeto = controlador.obtener(id_registro)
         if objeto is None:
@@ -163,7 +160,7 @@ class Menu:
         print("Deje en blanco lo que no quiera cambiar.\n")
         cambios = {}
         for campo in controlador.campos:
-            actual = getattr(objeto, campo)       # igual que objeto.nombre, objeto.email...
+            actual = getattr(objeto, campo)       
             nuevo = input(f"{campo.capitalize()} [{actual}]: ").strip()
             if nuevo != "":
                 cambios[campo] = nuevo
@@ -189,47 +186,66 @@ class Menu:
             imprimir_info("Operación cancelada")
         self.pausa()
 
-    # ---------- solo para ventas ----------
-    def crear_venta(self):
-        imprimir_titulo("REGISTRAR VENTA")
-        cliente_id = self.pedir_entero("Id del cliente: ")
-        if cliente_id is None:
-            imprimir_error("El id debe ser un número")
+    def crear_matricula(self):
+        imprimir_titulo("REGISTRAR MATRÍCULA")
+        imprimir_info("Estudiantes:")
+        for estudiante in self.estudiantes.leer():
+            print(f"  {estudiante}")
+        imprimir_info("Materias:")
+        for materia in self.materias.leer():
+            print(f"  {materia}")
+
+        estudiante_id = self.pedir_entero("\nId del estudiante: ")
+        materia_id = self.pedir_entero("Id de la materia: ")
+        if estudiante_id is None or materia_id is None:
+            imprimir_error("Los ids deben ser números")
             self.pausa()
             return
+        periodo = input("Periodo [2026-1]: ").strip()
 
-        imprimir_info("Productos disponibles:")
-        for producto in self.productos.leer():
-            print(f"  {producto}")
-
-        # Se piden productos hasta que el usuario escriba 0
-        items = []
-        while True:
-            producto_id = self.pedir_entero("\nId del producto (0 para terminar): ")
-            if producto_id is None or producto_id == 0:
-                break
-            cantidad = self.pedir_entero("Cantidad: ")
-            if cantidad is None or cantidad <= 0:
-                imprimir_error("Cantidad inválida")
-                continue
-            items.append({"producto_id": producto_id, "cantidad": cantidad})
-
-        exito, mensaje = self.ventas.crear({"cliente_id": cliente_id, "items": items})
+        exito, mensaje = self.matriculas.crear({"estudiante_id": estudiante_id,
+                                                "materia_id": materia_id,
+                                                "periodo": periodo})
         self.mostrar_resultado(exito, mensaje)
         self.pausa()
 
-    def ver_factura(self):
-        imprimir_titulo("FACTURA")
-        id_venta = self.pedir_entero("Id de la venta: ")
-        texto = self.ventas.factura(id_venta)
+    def agregar_nota(self):
+        imprimir_titulo("AGREGAR NOTA")
+        matricula_id = self.pedir_entero("Id de la matrícula: ")
+        if matricula_id is None:
+            imprimir_error("El id debe ser un número")
+            self.pausa()
+            return
+        tipo = input("Tipo (deber, lección, examen): ")
+        valor = input("Nota (0 a 20): ")
+        peso = input("Peso [1]: ").strip() or 1
+
+        exito, mensaje = self.matriculas.agregar_nota(matricula_id, tipo, valor, peso)
+        self.mostrar_resultado(exito, mensaje)
+        self.pausa()
+
+    def ver_boletin(self):
+        imprimir_titulo("BOLETÍN")
+        estudiante_id = self.pedir_entero("Id del estudiante: ")
+        texto = self.matriculas.boletin(estudiante_id)
         if texto is None:
-            imprimir_error("No existe esa venta")
+            imprimir_error("No existe ese estudiante")
         else:
             print(texto)
         self.pausa()
 
+    def reporte_general(self):
+        imprimir_titulo("REPORTE GENERAL")
+        
+        for controlador in (self.estudiantes, self.docentes, self.materias, self.matriculas):
+            lista = controlador.leer()
+            print(f"\n  --- {controlador.nombre.upper()}S ({len(lista)}) ---")
+            for objeto in lista:
+                print(f"    {objeto.etiqueta()}")
+        self.pausa()
 
-# Solo arranca si se ejecuta "python main.py"
+
+
 if __name__ == "__main__":
     try:
         Menu().ejecutar()
