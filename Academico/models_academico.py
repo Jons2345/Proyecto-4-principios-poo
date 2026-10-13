@@ -256,7 +256,7 @@ class Matricula(ModeloBase):
 
     @property
     def notas(self):
-        return tuple(self.__notas)          # copia de solo lectura
+        return tuple(self.__notas)           # copia de solo lectura
 
     @property
     def promedio(self):
