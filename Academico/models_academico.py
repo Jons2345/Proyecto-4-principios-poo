@@ -386,3 +386,5 @@ class Matricula(ModeloBase):
     def etiqueta(self):
         return (f"Estudiante {self.__estudiante_id} · materia {self.__materia_id} · "
                 f"{self.__periodo} · promedio {self.promedio} ({self.estado})")
+        
+        
