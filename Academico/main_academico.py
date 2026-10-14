@@ -9,7 +9,7 @@ class Menu:
     def __init__(self):
         self.estudiantes = EstudianteController()
         self.docentes = DocenteController()
-        self.materias = MateriaController()
+        self.materias = MateriaController(self.docentes)
         self.matriculas = MatriculaController(self.estudiantes, self.materias)
 
 
@@ -71,13 +71,13 @@ class Menu:
             print("  6. Eliminar")
             if controlador == self.matriculas:
                 print("  7. Agregar nota")
-                print(" 8. Ver voletin")
+                print("  8. Ver boletín")
             print("  0. Volver\n")
             opcion = input("Opción: ").strip()
 
             if opcion == "1":
                 if controlador == self.matriculas:
-                    self.crear_venta()
+                    self.crear_matricula()
                 else:
                     self.crear(controlador)
             elif opcion == "2":

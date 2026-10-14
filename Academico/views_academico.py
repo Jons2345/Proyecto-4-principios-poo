@@ -1,8 +1,101 @@
+from abc import abstractmethod
+
 from models_academico import Estudiante, Docente, Materia, Matricula
+from shared.json_manager import GestorJSON
 from views import CrudBase
 
 
-class EstudianteController(CrudBase):
+class CrudJSON(CrudBase):
+    """Escribe el CRUD UNA sola vez. Cada controlador solo pone su validar()."""
+
+    MODELO = None
+    ARCHIVO = ""
+    NOMBRE = ""
+    CAMPOS_BUSCABLES = ()
+
+    def __init__(self, archivo=None):
+        self.nombre = self.NOMBRE
+        self.campos = self.MODELO.CAMPOS
+        self.gestor = GestorJSON(archivo or self.ARCHIVO)
+        self.lista = [self.MODELO.desde_diccionario(d) for d in self.gestor.leer()]
+
+    @abstractmethod
+    def validar(self, datos, id_actual=None):
+        """None si todo está bien, o el texto del error."""
+
+    def guardar(self):
+        self.gestor.guardar([o.a_diccionario() for o in self.lista])
+
+    def obtener(self, id_registro):
+        for objeto in self.lista:
+            if objeto.id == id_registro:
+                return objeto
+        return None
+
+    def existe(self, id_registro):
+        return self.obtener(id_registro) is not None
+
+    def registros(self):
+        return [o.a_diccionario() for o in self.lista]
+
+    def listar(self):
+        return list(self.lista)
+
+    def leer(self):
+        return self.listar()
+
+    def buscar(self, texto):
+        texto = str(texto).strip().lower()
+        if not texto:
+            return []
+        return [o for o in self.lista
+                if any(texto in str(getattr(o, c, "") or "").lower() for c in self.CAMPOS_BUSCABLES)]
+
+    def siguiente(self):
+        return max((o.id for o in self.lista), default=0) + 1
+
+    def crear(self, datos):
+        datos = {c: datos.get(c, "") for c in self.campos}
+        error = self.validar(datos)
+        if error:
+            return False, error
+        try:
+            nuevo = self.MODELO.desde_diccionario({"id": self.siguiente(), **datos})
+        except (ValueError, TypeError) as error:
+            return False, str(error)
+        self.lista.append(nuevo)
+        self.guardar()
+        return True, f"{self.NOMBRE.capitalize()} registrado: {nuevo.etiqueta()}"
+
+    def actualizar(self, id_registro, datos):
+        if not datos:
+            return False, "No se indicó ningún cambio"
+        actual = self.obtener(id_registro)
+        if actual is None:
+            return False, f"No existe {self.NOMBRE} con id {id_registro}"
+        error = self.validar(datos, id_actual=id_registro)
+        if error:
+            return False, error
+        completos = actual.a_diccionario()
+        completos.update({c: v for c, v in datos.items() if c in self.campos})
+        try:
+            nuevo = self.MODELO.desde_diccionario(completos)
+        except (ValueError, TypeError) as error:
+            return False, str(error)
+        self.lista[self.lista.index(actual)] = nuevo
+        self.guardar()
+        return True, f"{self.NOMBRE.capitalize()} {id_registro} actualizado"
+
+    def eliminar(self, id_registro):
+        objeto = self.obtener(id_registro)
+        if objeto is None:
+            return False, f"No existe {self.NOMBRE} con id {id_registro}"
+        self.lista.remove(objeto)
+        self.guardar()
+        return True, f"{self.NOMBRE.capitalize()} {id_registro} eliminado"
+
+
+class EstudianteController(CrudJSON):
     """LISTO como ejemplo: cópialo y guíate con él para los demás."""
 
     MODELO = Estudiante
@@ -26,7 +119,7 @@ class EstudianteController(CrudBase):
         return None
 
 
-class DocenteController(CrudBase):
+class DocenteController(CrudJSON):
     MODELO = Docente
     ARCHIVO = "data/docentes.json"
     NOMBRE = "docente"
@@ -47,7 +140,7 @@ class DocenteController(CrudBase):
                 return f"El email {email} ya está registrado"
         return None
         
-class MateriaController(CrudBase):
+class MateriaController(CrudJSON):
     MODELO = Materia
     ARCHIVO = "data/materias.json"
     NOMBRE = "materia"
@@ -95,7 +188,7 @@ class MateriaController(CrudBase):
         return [m for m in self.listar() if m.docente_id == docente_id]
 
     
-class MatriculaController(CrudBase):
+class MatriculaController(CrudJSON):
     """El equivalente académico del VentaController."""
 
     MODELO = Matricula
@@ -141,29 +234,15 @@ class MatriculaController(CrudBase):
         return None
 
     def agregar_nota(self, matricula_id, tipo, valor, peso=1):
-
-        registros = self.registros()
-        datos = None
-        for r in registros:
-            if r["id"] == matricula_id:
-                datos = r
-        if datos is None:
+        matricula = self.obtener(matricula_id)
+        if matricula is None:
             return False, f"No existe matrícula con id {matricula_id}"
-        matricula = Matricula.desde_diccionario(datos)
-
         try:
             nota = matricula.agregar_nota(tipo, valor, peso)
         except ValueError as error:
             return False, str(error)
-
-        nuevos = []
-        for r in registros:
-            if r["id"] == matricula_id:
-                nuevos.append(matricula.a_diccionario())
-            else:
-                nuevos.append(r)
-        self.guardar(nuevos)          
-        return True, f"Nota agregada ({nota}). Promedio: {matricula.promedio}"
+        self.guardar()
+        return True, f"Nota agregada ({nota}). Promedio: {matricula.promedio} · {matricula.estado}"
 
     def boletin(self, estudiante_id):
         estudiante = None
