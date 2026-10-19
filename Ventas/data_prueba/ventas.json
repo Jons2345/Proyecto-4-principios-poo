@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "cliente_id": 1,
+    "fecha": "2026-10-18",
+    "total": 1647.25,
+    "detalles": [
+      {
+        "producto_id": 1,
+        "descripcion": "Laptop",
+        "cantidad": 2,
+        "precio_unitario": 800.0,
+        "subtotal": 1600.0
+      },
+      {
+        "producto_id": 2,
+        "descripcion": "Mouse",
+        "cantidad": 3,
+        "precio_unitario": 15.75,
+        "subtotal": 47.25
+      }
+    ]
+  }
+]

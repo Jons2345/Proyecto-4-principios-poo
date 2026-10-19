@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "proveedor_id": 1,         
+    "fecha": "2026-10-13",
+    "total": 320.0,            
+    "detalles": [              
+      { "producto_id": 1, "descripcion": "Teclado", "cantidad": 10,
+        "costo_unitario": 15.0, "subtotal": 150.0 },
+      { "producto_id": 2, "descripcion": "Mouse", "cantidad": 20,
+        "costo_unitario": 8.5, "subtotal": 170.0 }
+    ]
+  }
+]

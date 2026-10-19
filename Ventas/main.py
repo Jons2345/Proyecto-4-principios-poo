@@ -4,7 +4,7 @@
 from shared.herramientas import (
     imprimir_titulo, imprimir_exito, imprimir_error, imprimir_info, confirmar
 )
-from views import ClienteController, ProductoController, VentaController
+from views import ClienteController, ProductoController, VentaController, ProveedorController, CompraController
 
 
 class Menu:
@@ -15,6 +15,8 @@ class Menu:
         self.clientes = ClienteController()
         self.productos = ProductoController()
         self.ventas = VentaController(self.clientes, self.productos)
+        self.proveedores = ProveedorController()
+        self.compras = CompraController(self.productos, self.proveedores)
 
     # ---------- ayudas ----------
     def pausa(self):
@@ -41,6 +43,8 @@ class Menu:
             print("  1. Clientes")
             print("  2. Productos")
             print("  3. Ventas")
+            print("  4. Proveedores")
+            print("  5. Compras")
             print("  0. Salir\n")
             opcion = input("Opción: ").strip()
 
@@ -50,6 +54,10 @@ class Menu:
                 self.menu_crud(self.productos)
             elif opcion == "3":
                 self.menu_crud(self.ventas)
+            elif opcion == "4":
+                self.menu_crud(self.proveedores)
+            elif opcion == "5":
+                self.menu_crud(self.compras)
             elif opcion == "0":
                 imprimir_info("¡Hasta luego! 👋")
                 break
@@ -73,12 +81,16 @@ class Menu:
             print("  6. Eliminar")
             if controlador == self.ventas:
                 print("  7. Ver factura")
+            if controlador == self.compras:
+                print("  7. Ver orden de compra")
             print("  0. Volver\n")
             opcion = input("Opción: ").strip()
 
             if opcion == "1":
                 if controlador == self.ventas:
                     self.crear_venta()
+                elif controlador == self.compras:
+                    self.crear_compra()
                 else:
                     self.crear(controlador)
             elif opcion == "2":
@@ -93,6 +105,8 @@ class Menu:
                 self.eliminar(controlador)
             elif opcion == "7" and controlador == self.ventas:
                 self.ver_factura()
+            elif opcion == "7" and controlador == self.compras:
+                self.ver_orden_compras(controlador)
             elif opcion == "0":
                 break
             else:
@@ -148,6 +162,10 @@ class Menu:
         imprimir_titulo(f"ACTUALIZAR {controlador.nombre.upper()}")
         if controlador == self.ventas:
             imprimir_error("Las ventas registradas no se pueden modificar")
+            self.pausa()
+            return
+        if controlador == self.compras:
+            imprimir_error("Las compras registradas no se pueden modificar")
             self.pausa()
             return
 
@@ -228,6 +246,47 @@ class Menu:
         self.pausa()
 
 
+    def crear_compra(self):
+        imprimir_titulo("REGISTRAR COMPRA")
+        proveedor_id = self.pedir_entero("Id del Proveedor: ")
+        if proveedor_id is None:
+            imprimir_error("El id debe ser un número")
+            self.pausa()
+            return
+    
+        imprimir_info("Productos:")
+        for producto in self.productos.leer():
+            print(f"  {producto}")
+            
+            # Se piden productos hasta que el usuario escriba 0
+        items = []
+        while True:
+            producto_id = self.pedir_entero("\nId del producto (0 para terminar): ")
+            if producto_id is None or producto_id == 0:
+                break
+            cantidad = self.pedir_entero("Cantidad: ")
+            if cantidad is None or cantidad <= 0:
+                imprimir_error("Cantidad inválida")
+                continue
+            costo = input("Costo unitario: ").strip
+            items.append({"producto_id": producto_id, "cantidad": cantidad, "costo unitario": costo})
+    
+        exito, mensaje = self.compras.crear({"proveedor_id": proveedor_id, "items": items})
+        self.mostrar_resultado(exito, mensaje)
+        self.pausa()
+
+    def ver_orden_compras(self):
+        imprimir_titulo("ORDEN DE COMPRA")
+        id_compra = self.pedir_entero("Id de la compra: ")
+        texto = self.compras.orden_compra(id_compra)
+        if texto is None:
+            imprimir_error("No existe esa venta")
+        else:
+            print(texto)
+        self.pausa()
+        
+        
+    
 # Solo arranca si se ejecuta "python main.py"
 if __name__ == "__main__":
     try:

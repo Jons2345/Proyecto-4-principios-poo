@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "nombre": "Juan",
+    "apellido": "Perez",
+    "email": "juan@mail.com",
+    "telefono": "0991234567",
+    "ciudad": "Milagro"
+  },
+  {
+    "id": 2,
+    "nombre": "Maria",
+    "apellido": "Lopez",
+    "email": "maria@mail.com",
+    "telefono": "",
+    "ciudad": "Quito"
+  }
+]

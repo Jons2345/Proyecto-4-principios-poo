@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from models import Cliente, Producto, Venta
+from models import Cliente, Producto, Venta, Proveedor, Compra
 from shared.json_manager import GestorJSON
 
 
@@ -409,6 +409,255 @@ class VentaController(CrudBase):
         return resultado
 
 
+
+
+class ProveedorController(CrudBase):
+
+    def __init__(self, archivo="data/proveedors.json"):
+        self.nombre = "proveedor"            # se usa en los títulos del menú
+        self.campos = Proveedor.CAMPOS       # campos que el menú le pide al usuario
+        self.gestor = GestorJSON(archivo)
+
+        # Leemos el JSON y convertimos cada diccionario en un objeto proveedor
+        self.lista = []
+        for datos in self.gestor.leer():
+            self.lista.append(Proveedor.desde_diccionario(datos))
+
+    def guardar(self):
+        datos = []
+        for proveedor in self.lista:
+            datos.append(proveedor.a_diccionario())
+        self.gestor.guardar(datos)
+
+    def obtener(self, id_proveedor):
+        for proveedor in self.lista:
+            if proveedor.id == id_proveedor:
+                return proveedor
+        return None
+
+    def leer(self):
+        return self.lista
+
+    def buscar(self, texto):
+        texto = texto.strip().lower()
+        encontrados = []
+        if texto == "":
+            return encontrados
+
+        for proveedor in self.lista:
+            if (texto in proveedor.nombre.lower()
+                    or texto in proveedor.apellido.lower()
+                    or texto in proveedor.email
+                    or texto in proveedor.telefono
+                    or texto in proveedor.ciudad.lower()):
+                encontrados.append(proveedor)
+        return encontrados
+
+    def siguiente(self):
+        mayor = 0
+        for proveedor in self.lista:
+            if proveedor.id > mayor:
+                mayor = proveedor.id
+        return mayor + 1
+
+    def crear(self, datos):
+        # No puede haber dos proveedors con el mismo email
+        email = str(datos.get("email", "")).strip().lower()
+        for proveedor in self.lista:
+            if proveedor.email == email:
+                return False, "Ese email ya está registrado"
+
+        # Si algún dato está mal, el modelo lanza ValueError
+        try:
+            proveedor = proveedor(self.siguiente(),
+                              datos.get("nombre", ""),
+                              datos.get("apellido", ""),
+                              datos.get("email", ""),
+                              datos.get("telefono", ""),
+                              datos.get("ciudad", ""))
+        except ValueError as error:
+            return False, str(error)
+
+        self.lista.append(proveedor)
+        self.guardar()
+        return True, f"proveedor creado: {proveedor.etiqueta()}"
+
+    def actualizar(self, id_proveedor, datos):
+        if not datos:
+            return False, "No se indicó ningún cambio"
+
+        proveedor = self.obtener(id_proveedor)
+        if proveedor is None:
+            return False, f"No existe proveedor con id {id_proveedor}"
+
+        if "email" in datos:
+            email = str(datos["email"]).strip().lower()
+            for otro in self.lista:
+                if otro.email == email and otro.id != id_proveedor:
+                    return False, "Ese email ya está registrado"
+
+        # Creamos un proveedor nuevo con los cambios. Si algo falla,
+        # el proveedor viejo queda igual.
+        try:
+            nuevo = proveedor(proveedor.id,
+                            datos.get("nombre", proveedor.nombre),
+                            datos.get("apellido", proveedor.apellido),
+                            datos.get("email", proveedor.email),
+                            datos.get("telefono", proveedor.telefono),
+                            datos.get("ciudad", proveedor.ciudad))
+        except ValueError as error:
+            return False, str(error)
+
+        posicion = self.lista.index(proveedor)
+        self.lista[posicion] = nuevo
+        self.guardar()
+        return True, f"proveedor {id_proveedor} actualizado"
+
+    def eliminar(self, id_proveedor):
+        proveedor = self.obtener(id_proveedor)
+        if proveedor is None:
+            return False, f"No existe proveedor con id {id_proveedor}"
+
+        self.lista.remove(proveedor)
+        self.guardar()
+        return True, f"proveedor {id_proveedor} eliminado"
+
+    
+    
+    
+class CompraController(CrudBase):
+
+    def __init__(self, proveedores, productos, archivo="data/compras.json"):
+        self.nombre = "compra"
+        self.campos = Compra.CAMPOS
+        self.gestor = GestorJSON(archivo)
+
+        # La compra USA los controladores de clientes y productos.
+        # Hay que pasarle los MISMOS que usa el menú.
+        self.proveedores = proveedores
+        self.productos = productos
+
+        self.lista = []
+        for datos in self.gestor.leer():
+            self.lista.append(Compra.desde_diccionario(datos))
+
+    def guardar(self):
+        datos = []
+        for compra in self.lista:
+            datos.append(compra.a_diccionario())
+        self.gestor.guardar(datos)
+
+    def obtener(self, id_compra):
+        for compra in self.lista:
+            if compra.id == id_compra:
+                return compra
+        return None
+
+    def leer(self):
+        return self.lista
+
+    def buscar(self, texto):
+        # Las compras se buscan por fecha, ej: "2026-10"
+        texto = texto.strip()
+        encontrados = []
+        if texto == "":
+            return encontrados
+
+        for compra in self.lista:
+            if texto in compra.fecha:
+                encontrados.append(compra)
+        return encontrados
+
+    def siguiente(self):
+        mayor = 0
+        for compra in self.lista:
+            if compra.id > mayor:
+                mayor = compra.id
+        return mayor + 1
+
+    def crear(self, datos):
+        # datos = {"proveedor_id": 1, "items": [{"producto_id": 2, "cantidad": 3}, ...]}
+        try:
+            proveedor_id= int(datos.get("proveedor_id", 0))
+        except (TypeError, ValueError):
+            return False, "El proveedor_iddebe ser un número"
+
+        if self.proveedores.obtener(proveedor_id) is None:
+            return False, f"No existe un proveedor con id {proveedor_id}"
+
+        items = datos.get("items", [])
+        if len(items) == 0:
+            return False, "La compra debe tener al menos un producto"
+
+        # Revisamos TODOS los productos antes de vender: si uno falla, no se vende nada
+        ids_vistos = []
+        for item in items:
+            producto = self.productos.obtener(item["producto_id"])
+            if producto is None:
+                return False, f"No existe producto con id {item['producto_id']}"
+            if producto.id in ids_vistos:
+                return False, f"El producto {producto.nombre} está repetido en la compra"
+            if not producto.hay_stock(item["cantidad"]):
+                return False, (f"Stock insuficiente de {producto.nombre}: "
+                               f"hay {producto.stock}, piden {item['cantidad']}")
+            ids_vistos.append(producto.id)
+
+        # Todo bien: armamos la compra y descontamos el stock
+        compra = compra(self.siguiente(), proveedor_id, datos.get("fecha", ""))
+        for item in items:
+            producto = self.productos.obtener(item["producto_id"])
+            compra.agregar_detalle(producto, item["cantidad"])
+            producto.aumentar_stock(item["cantidad"])
+        self.productos.guardar()          # guarda el stock nuevo en productos.json
+
+        self.lista.append(compra)
+        self.guardar()                    # guarda la compra en compras.json
+        return True, f"compra {compra.id} registrada por ${compra.total:.2f}"
+
+    def actualizar(self, id_compra, datos):
+        # Una compra ya registrada no se modifica (como una orden_compra real)
+        return False, "Las compras registradas no se pueden modificar"
+
+    def eliminar(self, id_compra):
+        compra = self.obtener(id_compra)
+        if compra is None:
+            return False, f"No existe compra con id {id_compra}"
+
+        self.lista.remove(compra)
+        self.guardar()
+        return True, f"compra {id_compra} eliminada"
+
+    # --- métodos propios de compras ---
+    def orden_compra(self, id_compra):
+        compra = self.obtener(id_compra)
+        if compra is None:
+            return None
+
+        proveedor = self.proveedores.obtener(compra.proveedor_id)
+        if proveedor is None:
+            nombre_proveedor = "eliminado"
+        else:
+            nombre_proveedor = proveedor.nombre_completo
+
+        texto = f"ORDEN_COMPRA #{compra.id}   fecha: {compra.fecha}\n"
+        texto += f"proveedor: {nombre_proveedor}\n"
+        texto += "-" * 46 + "\n"
+        for detalle in compra.detalles:
+            texto += f"  {detalle}\n"
+        texto += "-" * 46 + "\n"
+        texto += f"  TOTAL: ${compra.total:.2f}  ({compra.cantidad_items} ítems)"
+        return texto
+
+    def compras_de_proveedor(self, proveedor_id):
+        resultado = []
+        for compra in self.lista:
+            if compra.proveedor_id== proveedor_id:
+                resultado.append(compra)
+        return resultado
+
+
+
+
 # =====================================================================
 # PRUEBAS SENCILLAS: solo se ejecutan con "python views.py"
 # (desde la carpeta proyecto_clientes)
@@ -502,3 +751,10 @@ if __name__ == "__main__":
     print("Clientes :", [str(c) for c in clientes2.leer()])
     print("Productos:", [str(p) for p in productos2.leer()])
     print("Ventas   :", [str(v) for v in ventas2.leer()])
+    
+    
+    
+    
+    
+    
+    
