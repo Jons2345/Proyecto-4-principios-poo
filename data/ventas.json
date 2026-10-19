@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "cliente_id": 1,
+    "fecha": "2026-10-19",
+    "total": 20.0,
+    "detalles": [
+      {
+        "producto_id": 1,
+        "descripcion": "Papeles",
+        "cantidad": 2,
+        "precio_unitario": 10.0,
+        "subtotal": 20.0
+      }
+    ]
+  }
+]

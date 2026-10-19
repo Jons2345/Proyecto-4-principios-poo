@@ -16,7 +16,7 @@ class Menu:
         self.productos = ProductoController()
         self.ventas = VentaController(self.clientes, self.productos)
         self.proveedores = ProveedorController()
-        self.compras = CompraController(self.productos, self.proveedores)
+        self.compras = CompraController(self.proveedores, self.productos)
 
     # ---------- ayudas ----------
     def pausa(self):
@@ -99,14 +99,14 @@ class Menu:
                 self.buscar(controlador)
             elif opcion == "4":
                 self.ver_por_id(controlador)
-            elif opcion == "5":
+            elif opcion == "5":                
                 self.actualizar(controlador)
             elif opcion == "6":
                 self.eliminar(controlador)
             elif opcion == "7" and controlador == self.ventas:
                 self.ver_factura()
             elif opcion == "7" and controlador == self.compras:
-                self.ver_orden_compras(controlador)
+                self.ver_orden_compras()
             elif opcion == "0":
                 break
             else:
@@ -268,8 +268,8 @@ class Menu:
             if cantidad is None or cantidad <= 0:
                 imprimir_error("Cantidad inválida")
                 continue
-            costo = input("Costo unitario: ").strip
-            items.append({"producto_id": producto_id, "cantidad": cantidad, "costo unitario": costo})
+            costo = input("Costo unitario: ").strip()
+            items.append({"producto_id": producto_id, "cantidad": cantidad, "costo_unitario": costo})
     
         exito, mensaje = self.compras.crear({"proveedor_id": proveedor_id, "items": items})
         self.mostrar_resultado(exito, mensaje)
@@ -280,7 +280,7 @@ class Menu:
         id_compra = self.pedir_entero("Id de la compra: ")
         texto = self.compras.orden_compra(id_compra)
         if texto is None:
-            imprimir_error("No existe esa venta")
+            imprimir_error("No existe esa compra")
         else:
             print(texto)
         self.pausa()

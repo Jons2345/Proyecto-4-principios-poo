@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "proveedor_id": 1,
+    "fecha": "2026-10-19",
+    "total": 6.0,
+    "detalles": [
+      {
+        "producto_id": 1,
+        "descripcion": "Papeles",
+        "cantidad": 2,
+        "costo_unitario": 3.0,
+        "subtotal": 6.0
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "proveedor_id": 1,
+    "fecha": "2026-10-19",
+    "total": 6.0,
+    "detalles": [
+      {
+        "producto_id": 2,
+        "descripcion": "Lapizes",
+        "cantidad": 2,
+        "costo_unitario": 3.0,
+        "subtotal": 6.0
+      }
+    ]
+  }
+]

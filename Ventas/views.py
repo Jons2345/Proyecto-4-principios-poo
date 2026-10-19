@@ -413,7 +413,7 @@ class VentaController(CrudBase):
 
 class ProveedorController(CrudBase):
 
-    def __init__(self, archivo="data/proveedors.json"):
+    def __init__(self, archivo="data/proveedores.json"):
         self.nombre = "proveedor"            # se usa en los títulos del menú
         self.campos = Proveedor.CAMPOS       # campos que el menú le pide al usuario
         self.gestor = GestorJSON(archivo)
@@ -448,8 +448,8 @@ class ProveedorController(CrudBase):
             if (texto in proveedor.nombre.lower()
                     or texto in proveedor.apellido.lower()
                     or texto in proveedor.email
-                    or texto in proveedor.telefono
-                    or texto in proveedor.ciudad.lower()):
+                    or texto in proveedor.ruc 
+                    or texto in proveedor.empresa.lower()):
                 encontrados.append(proveedor)
         return encontrados
 
@@ -463,18 +463,21 @@ class ProveedorController(CrudBase):
     def crear(self, datos):
         # No puede haber dos proveedors con el mismo email
         email = str(datos.get("email", "")).strip().lower()
+        ruc = str(datos.get("ruc", "")).strip()
         for proveedor in self.lista:
             if proveedor.email == email:
                 return False, "Ese email ya está registrado"
+            if proveedor.ruc == ruc:
+                return False, "Ese RUC ya está registrado"
 
         # Si algún dato está mal, el modelo lanza ValueError
         try:
-            proveedor = proveedor(self.siguiente(),
+            proveedor = Proveedor(self.siguiente(),
                               datos.get("nombre", ""),
                               datos.get("apellido", ""),
                               datos.get("email", ""),
-                              datos.get("telefono", ""),
-                              datos.get("ciudad", ""))
+                              datos.get("ruc", ""),
+                              datos.get("empresa", ""))
         except ValueError as error:
             return False, str(error)
 
@@ -495,23 +498,29 @@ class ProveedorController(CrudBase):
             for otro in self.lista:
                 if otro.email == email and otro.id != id_proveedor:
                     return False, "Ese email ya está registrado"
+                
+        if "ruc" in datos:
+            ruc = str(datos["ruc"]).strip()
+            for otro in self.lista:
+                if otro.ruc == ruc and otro.id != id_proveedor:
+                    return False, "Ese RUC ya está registrado"
 
         # Creamos un proveedor nuevo con los cambios. Si algo falla,
         # el proveedor viejo queda igual.
         try:
-            nuevo = proveedor(proveedor.id,
+            nuevo = Proveedor(proveedor.id,
                             datos.get("nombre", proveedor.nombre),
                             datos.get("apellido", proveedor.apellido),
                             datos.get("email", proveedor.email),
-                            datos.get("telefono", proveedor.telefono),
-                            datos.get("ciudad", proveedor.ciudad))
+                            datos.get("ruc", proveedor.ruc),
+                            datos.get("empresa", proveedor.empresa))
         except ValueError as error:
             return False, str(error)
 
         posicion = self.lista.index(proveedor)
         self.lista[posicion] = nuevo
         self.guardar()
-        return True, f"proveedor {id_proveedor} actualizado"
+        return True, f"Proveedor {id_proveedor} actualizado"
 
     def eliminar(self, id_proveedor):
         proveedor = self.obtener(id_proveedor)
@@ -520,9 +529,8 @@ class ProveedorController(CrudBase):
 
         self.lista.remove(proveedor)
         self.guardar()
-        return True, f"proveedor {id_proveedor} eliminado"
+        return True, f"Proveedor {id_proveedor} eliminado"
 
-    
     
     
 class CompraController(CrudBase):
@@ -597,23 +605,27 @@ class CompraController(CrudBase):
                 return False, f"No existe producto con id {item['producto_id']}"
             if producto.id in ids_vistos:
                 return False, f"El producto {producto.nombre} está repetido en la compra"
-            if not producto.hay_stock(item["cantidad"]):
-                return False, (f"Stock insuficiente de {producto.nombre}: "
-                               f"hay {producto.stock}, piden {item['cantidad']}")
+            
             ids_vistos.append(producto.id)
 
         # Todo bien: armamos la compra y descontamos el stock
-        compra = compra(self.siguiente(), proveedor_id, datos.get("fecha", ""))
-        for item in items:
-            producto = self.productos.obtener(item["producto_id"])
-            compra.agregar_detalle(producto, item["cantidad"])
-            producto.aumentar_stock(item["cantidad"])
-        self.productos.guardar()          # guarda el stock nuevo en productos.json
+        compra = Compra(self.siguiente(), proveedor_id, datos.get("fecha", ""))
+        try:
+            for item in items:
+                producto = self.productos.obtener(item["producto_id"])
+                compra.agregar_detalle(producto, item["cantidad"], item.get("costo_unitario", ""))
+        except ValueError as error:
+            return False, str(error)
 
+        # Todo bien: ahora sí sumamos el stock
+        for detalle in compra.detalles:
+            producto = self.productos.obtener(detalle.producto_id)
+            producto.aumentar_stock(detalle.cantidad)
+        self.productos.guardar()
         self.lista.append(compra)
         self.guardar()                    # guarda la compra en compras.json
-        return True, f"compra {compra.id} registrada por ${compra.total:.2f}"
-
+        return True, f"Compra {compra.id} registrada por ${compra.total:.2f}"
+        
     def actualizar(self, id_compra, datos):
         # Una compra ya registrada no se modifica (como una orden_compra real)
         return False, "Las compras registradas no se pueden modificar"
@@ -637,10 +649,10 @@ class CompraController(CrudBase):
         if proveedor is None:
             nombre_proveedor = "eliminado"
         else:
-            nombre_proveedor = proveedor.nombre_completo
+            nombre_proveedor = proveedor.etiqueta()
 
-        texto = f"ORDEN_COMPRA #{compra.id}   fecha: {compra.fecha}\n"
-        texto += f"proveedor: {nombre_proveedor}\n"
+        texto = f"ORDEN DE COMPRA #{compra.id}   fecha: {compra.fecha}\n"
+        texto += f"Proveedor: {nombre_proveedor}\n"
         texto += "-" * 46 + "\n"
         for detalle in compra.detalles:
             texto += f"  {detalle}\n"
